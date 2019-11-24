@@ -8,7 +8,7 @@ import hmac
 import datetime
 from collections import namedtuple
 import enum
-
+import time
 
 GATEWAY_URL = 'https://kic.lgthinq.com:46030/api/common/gatewayUriList'
 APP_KEY = 'wideq'
@@ -21,6 +21,90 @@ CLIENT_ID = 'LGAO221A02'
 OAUTH_SECRET_KEY = 'c053c2a6ddeb7ad97cb0eed0dcb31cf8'
 OAUTH_CLIENT_KEY = 'LGAO221A02'
 DATE_FORMAT = '%a, %d %b %Y %H:%M:%S +0000'
+
+"""WASHER STATE"""
+STATE_OPTIONITEM_ON = 'On'
+STATE_OPTIONITEM_OFF = 'Off'
+
+STATE_WASHER_POWER_OFF = 'Off'
+STATE_WASHER_INITIAL = 'Select Course'
+STATE_WASHER_PAUSE = 'Paused'
+STATE_WASHER_ERROR_AUTO_OFF = 'Automatic Poweroff Error'
+STATE_WASHER_RESERVE = 'Reserved'
+STATE_WASHER_DETECTING = 'Detecting'
+STATE_WASHER_ADD_DRAIN = 'ADD_DRAIN'
+STATE_WASHER_DETERGENT_AMOUT = 'Detergent Amount'
+STATE_WASHER_RUNNING = 'Washing'
+STATE_WASHER_PREWASH = 'Pre-Wash'
+STATE_WASHER_RINSING = 'Rinsing'
+STATE_WASHER_RINSE_HOLD = 'Rinsing [On Hold]'
+STATE_WASHER_SPINNING = 'Spinning'
+STATE_WASHER_DRYING = 'Drying'
+STATE_WASHER_END = 'End'
+STATE_WASHER_REFRESHWITHSTEAM = 'Refreshing with steam'
+STATE_WASHER_COOLDOWN = 'Cooldown'
+STATE_WASHER_STEAMSOFTENING = 'Using softener with steam'
+STATE_WASHER_ERRORSTATE = 'An error occured'
+STATE_WASHER_TCL_ALARM_NORMAL = 'Pipe Clogged'
+STATE_WASHER_FROZEN_PREVENT_INITIAL = 'Error during initialization'
+STATE_WASHER_FROZEN_PREVENT_RUNNING = 'Unfreezing system, please wait'
+STATE_WASHER_FROZEN_PREVENT_PAUSE = 'System is being unfrozen, you cannot pause this operation.'
+STATE_WASHER_ERROR = 'Error'
+
+STATE_WASHER_WATERTEMP_COLD = 'Cold'
+STATE_WASHER_WATERTEMP_20 = '20℃'
+STATE_WASHER_WATERTEMP_30 = '30℃'
+STATE_WASHER_WATERTEMP_40 = '40℃'
+STATE_WASHER_WATERTEMP_60 = '60℃'
+STATE_WASHER_WATERTEMP_95 = '95℃'
+
+STATE_WASHER_SPINSPEED_NOSPIN = 'No Spin'
+STATE_WASHER_SPINSPEED_400 = '400 RPM'
+STATE_WASHER_SPINSPEED_800 = '800 RPM'
+STATE_WASHER_SPINSPEED_1000 = '1000 RPM'
+STATE_WASHER_SPINSPEED_1200 = '1200 RPM'
+STATE_WASHER_SPINSPEED_1400 = '1400 RPM'
+
+STATE_WASHER_NO_ERROR = 'Normal'
+STATE_WASHER_ERROR_dE2 = 'Door open - Please close the door'
+STATE_WASHER_ERROR_IE = 'No water - Please make sure the water has enough pressure to reach the washer.'
+STATE_WASHER_ERROR_OE = 'Drain error - Please make sure the pipe is not clogged/frozen'
+STATE_WASHER_ERROR_UE = 'Laundry trim'
+STATE_WASHER_ERROR_FE = 'FE - Contact Service Center'
+STATE_WASHER_ERROR_PE = 'PE - Contact Service Center'
+STATE_WASHER_ERROR_LE = 'LE - Contact Service Center'
+STATE_WASHER_ERROR_tE = 'tE - Contact Service Center'
+STATE_WASHER_ERROR_dHE = 'dHE - Contact Service Center'
+STATE_WASHER_ERROR_CE = 'CE - Contact Service Center'
+STATE_WASHER_ERROR_PF = 'PF - Contact Service Center'
+STATE_WASHER_ERROR_FF = 'The washer is frozen, please warm up the surrounding area.'
+STATE_WASHER_ERROR_dCE = 'dCE - Contact Service Center'
+STATE_WASHER_ERROR_EE = 'EE - Contact Service Center'
+STATE_WASHER_ERROR_PS = 'PS - Contact Service Center'
+STATE_WASHER_ERROR_dE1 = 'Door open - Please close the door'
+STATE_WASHER_ERROR_LOE = 'Detergent door is open - Please close the detergent door'
+STATE_NO_ERROR = 'Normal'
+
+STATE_WASHER_SMARTCOURSE_SILENT = 'Silent'
+STATE_WASHER_SMARTCOURSE_SMALL_LOAD = 'Small Load'
+STATE_WASHER_SMARTCOURSE_SKIN_CARE = 'Skin Care'
+STATE_WASHER_SMARTCOURSE_RAINY_SEASON = 'Rainy Season'
+STATE_WASHER_SMARTCOURSE_SWEAT_STAIN = 'Sweat/Stains Removal'
+STATE_WASHER_SMARTCOURSE_SINGLE_GARMENT = 'Single Garment'
+STATE_WASHER_SMARTCOURSE_SCHOOL_UNIFORM = 'School Uniform'
+STATE_WASHER_SMARTCOURSE_STATIC_REMOVAL = 'Static Removal'
+STATE_WASHER_SMARTCOURSE_COLOR_CARE = 'Color Care'
+STATE_WASHER_SMARTCOURSE_SPIN_ONLY = 'Spin Only'
+STATE_WASHER_SMARTCOURSE_DEODORIZATION = 'Deodorization'
+STATE_WASHER_SMARTCOURSE_BEDDING_CARE = 'Bedding Care'
+STATE_WASHER_SMARTCOURSE_CLOTH_CARE = 'Cloth Care'
+STATE_WASHER_SMARTCOURSE_SMART_RINSE = 'Smart Rinse'
+STATE_WASHER_SMARTCOURSE_ECO_WASH = 'Economy Wash'
+
+STATE_WASHER_TERM_NO_SELECT = 'Nothing selected yet'
+
+STATE_WASHER_OPTIONITEM_ON = 'On'
+STATE_WASHER_OPTIONITEM_OFF = 'Off'
 
 
 def gen_uuid():
@@ -41,23 +125,17 @@ def oauth2_signature(message, secret):
     return base64.b64encode(digest)
 
 
-def get_list(obj, key):
-    """Look up a list using a key from an object.
+def as_list(obj):
+    """Wrap non-lists in lists.
 
-    If `obj[key]` is a list, return it unchanged. If is something else,
-    return a single-element list containing it. If the key does not
-    exist, return an empty list.
+    If `obj` is a list, return it unchanged. Otherwise, return a
+    single-element list containing it.
     """
 
-    try:
-        val = obj[key]
-    except KeyError:
-        return []
-
-    if isinstance(val, list):
-        return val
+    if isinstance(obj, list):
+        return obj
     else:
-        return [val]
+        return [obj]
 
 
 class APIError(Exception):
@@ -70,13 +148,6 @@ class APIError(Exception):
 
 class NotLoggedInError(APIError):
     """The session is not valid or expired."""
-
-    def __init__(self):
-        pass
-
-
-class NotConnectedError(APIError):
-    """The service can't contact the specified device."""
 
     def __init__(self):
         pass
@@ -97,6 +168,12 @@ class MonitorError(APIError):
     def __init__(self, device_id, code):
         self.device_id = device_id
         self.code = code
+
+class NotConnectError(APIError):
+    """The session is not valid or expired."""
+
+    def __init__(self):
+        pass
 
 
 def lgedm_post(url, data=None, access_token=None, session_id=None):
@@ -132,9 +209,10 @@ def lgedm_post(url, data=None, access_token=None, session_id=None):
             if code == "0102":
                 raise NotLoggedInError()
             elif code == "0106":
-                raise NotConnectedError()
+                raise NotConnectError()
             else:
                 raise APIError(code, message)
+
 
     return out
 
@@ -269,7 +347,7 @@ class Auth(object):
 
         session_info = login(self.gateway.api_root, self.access_token)
         session_id = session_info['jsessionId']
-        return Session(self, session_id), get_list(session_info, 'item')
+        return Session(self, session_id), as_list(session_info['item'])
 
     def refresh(self):
         """Refresh the authentication, returning a new Auth object.
@@ -301,7 +379,7 @@ class Session(object):
         Return a list of dicts with information about the devices.
         """
 
-        return get_list(self.post('device/deviceList'), 'item')
+        return as_list(self.post('device/deviceList')['item'])
 
     def monitor_start(self, device_id):
         """Begin monitoring a device's status.
@@ -332,11 +410,6 @@ class Session(object):
         work_list = [{'deviceId': device_id, 'workId': work_id}]
         res = self.post('rti/rtiResult', {'workList': work_list})['workList']
 
-        # Check for errors.
-        code = res.get('returnCode')  # returnCode can be missing.
-        if code != '0000':
-            raise MonitorError(device_id, code)
-
         # The return data may or may not be present, depending on the
         # monitoring task status.
         if 'returnData' in res:
@@ -346,6 +419,11 @@ class Session(object):
             return base64.b64decode(res['returnData'])
         else:
             return None
+         # Check for errors.
+        code = res.get('returnCode')  # returnCode can be missing.
+        if code != '0000':
+            raise MonitorError(device_id, code)
+
 
     def monitor_stop(self, device_id, work_id):
         """Stop monitoring a device."""
@@ -389,30 +467,34 @@ class Session(object):
         })
         return res['returnData']
 
+    def delete_permission(self, device_id):
+        self.post('rti/delControlPermission', {
+            'deviceId': device_id,
+        })
 
 class Monitor(object):
     """A monitoring task for a device.
-
-    This task is robust to some API-level failures. If the monitoring
-    task expires, it attempts to start a new one automatically. This
-    makes one `Monitor` object suitable for long-term monitoring.
-    """
-
+        
+        This task is robust to some API-level failures. If the monitoring
+        task expires, it attempts to start a new one automatically. This
+        makes one `Monitor` object suitable for long-term monitoring.
+        """
+    
     def __init__(self, session, device_id):
         self.session = session
         self.device_id = device_id
-
+    
     def start(self):
         self.work_id = self.session.monitor_start(self.device_id)
-
+    
     def stop(self):
         self.session.monitor_stop(self.device_id, self.work_id)
-
+    
     def poll(self):
         """Get the current status data (a bytestring) or None if the
-        device is not yet ready.
-        """
-
+            device is not yet ready.
+            """
+        self.work_id = self.session.monitor_start(self.device_id)
         try:
             return self.session.monitor_poll(self.device_id, self.work_id)
         except MonitorError:
@@ -421,159 +503,160 @@ class Monitor(object):
             self.start()
             return None
 
+
     @staticmethod
     def decode_json(data):
         """Decode a bytestring that encodes JSON status data."""
-
+        
         return json.loads(data.decode('utf8'))
-
+    
     def poll_json(self):
         """For devices where status is reported via JSON data, get the
-        decoded status result (or None if status is not available).
-        """
-
+            decoded status result (or None if status is not available).
+            """
+        
         data = self.poll()
         return self.decode_json(data) if data else None
-
+    
     def __enter__(self):
         self.start()
         return self
-
+    
     def __exit__(self, type, value, tb):
         self.stop()
 
 
 class Client(object):
     """A higher-level API wrapper that provides a session more easily
-    and allows serialization of state.
-    """
-
+        and allows serialization of state.
+        """
+    
     def __init__(self, gateway=None, auth=None, session=None):
         # The three steps required to get access to call the API.
         self._gateway = gateway
         self._auth = auth
         self._session = session
-
+        
         # The last list of devices we got from the server. This is the
         # raw JSON list data describing the devices.
         self._devices = None
-
+        
         # Cached model info data. This is a mapping from URLs to JSON
         # responses.
         self._model_info = {}
-
+    
     @property
     def gateway(self):
         if not self._gateway:
             self._gateway = Gateway.discover()
         return self._gateway
-
+    
     @property
     def auth(self):
         if not self._auth:
             assert False, "unauthenticated"
         return self._auth
-
+    
     @property
     def session(self):
         if not self._session:
             self._session, self._devices = self.auth.start_session()
         return self._session
-
+    
     @property
     def devices(self):
         """DeviceInfo objects describing the user's devices.
-        """
-
+            """
+        
         if not self._devices:
             self._devices = self.session.get_devices()
         return (DeviceInfo(d) for d in self._devices)
-
+    
     def get_device(self, device_id):
         """Look up a DeviceInfo object by device ID.
-
-        Return None if the device does not exist.
-        """
-
+            
+            Return None if the device does not exist.
+            """
+        
         for device in self.devices:
             if device.id == device_id:
                 return device
         return None
-
+    
     @classmethod
     def load(cls, state):
         """Load a client from serialized state.
-        """
-
+            """
+        
         client = cls()
-
+        
         if 'gateway' in state:
             data = state['gateway']
             client._gateway = Gateway(
-                data['auth_base'], data['api_root'], data['oauth_root']
+            data['auth_base'], data['api_root'], data['oauth_root']
             )
-
+        
         if 'auth' in state:
             data = state['auth']
             client._auth = Auth(
-                client.gateway, data['access_token'], data['refresh_token']
+            client.gateway, data['access_token'], data['refresh_token']
             )
-
+        
         if 'session' in state:
             client._session = Session(client.auth, state['session'])
-
+                
         if 'model_info' in state:
             client._model_info = state['model_info']
-
+                
         return client
 
     def dump(self):
         """Serialize the client state."""
-
+        
         out = {
             'model_info': self._model_info,
         }
-
+        
         if self._gateway:
             out['gateway'] = {
                 'auth_base': self._gateway.auth_base,
                 'api_root': self._gateway.api_root,
                 'oauth_root': self._gateway.oauth_root,
-            }
-
+        }
+        
         if self._auth:
             out['auth'] = {
                 'access_token': self._auth.access_token,
                 'refresh_token': self._auth.refresh_token,
-            }
+        }
 
         if self._session:
             out['session'] = self._session.session_id
 
         return out
-
+    
     def refresh(self):
         self._auth = self.auth.refresh()
         self._session, self._devices = self.auth.start_session()
-
+    
     @classmethod
     def from_token(cls, refresh_token):
         """Construct a client using just a refresh token.
-
-        This allows simpler state storage (e.g., for human-written
-        configuration) but it is a little less efficient because we need
-        to reload the gateway servers and restart the session.
-        """
-
+            
+            This allows simpler state storage (e.g., for human-written
+            configuration) but it is a little less efficient because we need
+            to reload the gateway servers and restart the session.
+            """
+        
         client = cls()
         client._auth = Auth(client.gateway, None, refresh_token)
         client.refresh()
         return client
-
+    
     def model_info(self, device):
         """For a DeviceInfo object, get a ModelInfo object describing
-        the model's capabilities.
-        """
+            the model's capabilities.
+            """
         url = device.model_info_url
         if url not in self._model_info:
             self._model_info[url] = device.load_model_info()
@@ -582,65 +665,41 @@ class Client(object):
 
 class DeviceType(enum.Enum):
     """The category of device."""
-
-    REFRIGERATOR = 101
-    KIMCHI_REFRIGERATOR = 102
-    WATER_PURIFIER = 103
+    
     WASHER = 201
-    DRYER = 202
-    STYLER = 203
-    DISHWASHER = 204
-    OVEN = 301
-    MICROWAVE = 302
-    COOKTOP = 303
-    HOOD = 304
-    AC = 401  # Includes heat pumps, etc., possibly all HVAC devices.
-    AIR_PURIFIER = 402
-    DEHUMIDIFIER = 403
-    ROBOT_KING = 501  # Robotic vacuum cleaner?
-    ARCH = 1001
-    MISSG = 3001
-    SENSOR = 3002
-    SOLAR_SENSOR = 3102
-    IOT_LIGHTING = 3003
-    IOT_MOTION_SENSOR = 3004
-    IOT_SMART_PLUG = 3005
-    IOT_DUST_SENSOR = 3006
-    EMS_AIR_STATION = 4001
-    AIR_SENSOR = 4003
 
 
 class DeviceInfo(object):
     """Details about a user's device.
-
+        
     This is populated from a JSON dictionary provided by the API.
     """
-
+    
     def __init__(self, data):
         self.data = data
-
+    
     @property
     def model_id(self):
         return self.data['modelNm']
-
+    
     @property
     def id(self):
         return self.data['deviceId']
-
+    
     @property
     def model_info_url(self):
         return self.data['modelJsonUrl']
-
+    
     @property
     def name(self):
         return self.data['alias']
-
+    
     @property
     def type(self):
         """The kind of device, as a `DeviceType` value."""
-
+        
         return DeviceType(self.data['deviceType'])
-
+    
     def load_model_info(self):
         """Load JSON data describing the model's capabilities.
         """
@@ -649,40 +708,66 @@ class DeviceInfo(object):
 
 EnumValue = namedtuple('EnumValue', ['options'])
 RangeValue = namedtuple('RangeValue', ['min', 'max', 'step'])
+BitValue = namedtuple('BitValue', ['options'])
+ReferenceValue = namedtuple('ReferenceValue', ['reference'])
 
 
 class ModelInfo(object):
     """A description of a device model's capabilities.
-    """
-
+        """
+    
     def __init__(self, data):
         self.data = data
+    
+    def value_type(self, name):
+        if name in self.data['Value']:
+            return self.data['Value'][name]['type']
+        else:
+            return None
 
     def value(self, name):
         """Look up information about a value.
-
+        
         Return either an `EnumValue` or a `RangeValue`.
         """
         d = self.data['Value'][name]
         if d['type'] in ('Enum', 'enum'):
             return EnumValue(d['option'])
         elif d['type'] == 'Range':
-            return RangeValue(
-                d['option']['min'], d['option']['max'], d['option']['step']
-            )
+            return RangeValue(d['option']['min'], d['option']['max'], d['option']['step'])
+        elif d['type'] == 'Bit':
+            bit_values = {}
+            for bit in d['option']:
+                bit_values[bit['startbit']] = {
+                'value' : bit['value'],
+                'length' : bit['length'],
+                }
+            return BitValue(
+                    bit_values
+                    )
+        elif d['type'] == 'Reference':
+            ref =  d['option'][0]
+            return ReferenceValue(
+                    self.data[ref]
+                    )
+        elif d['type'] == 'Boolean':
+            return EnumValue({'0': 'False', '1' : 'True'})
+        elif d['type'] == 'String':
+            pass 
         else:
             assert False, "unsupported value type {}".format(d['type'])
+
 
     def default(self, name):
         """Get the default value, if it exists, for a given value.
         """
-
+            
         return self.data['Value'][name]['default']
-
+        
     def enum_value(self, key, name):
         """Look up the encoded value for a friendly enum name.
         """
-
+        
         options = self.value(key).options
         options_inv = {v: k for k, v in options.items()}  # Invert the map.
         return options_inv[name]
@@ -690,48 +775,83 @@ class ModelInfo(object):
     def enum_name(self, key, value):
         """Look up the friendly enum name for an encoded value.
         """
-
+        if not self.value_type(key):
+            return str(value)
+                
         options = self.value(key).options
         return options[value]
+
+    def range_name(self, key):
+        """Look up the value of a RangeValue.  Not very useful other than for comprehension
+        """
+            
+        return key
+        
+    def bit_name(self, key, bit_index, value):
+        """Look up the friendly name for an encoded bit value
+        """
+        if not self.value_type(key):
+            return str(value)
+        
+        options = self.value(key).options
+        
+        if not self.value_type(options[bit_index]['value']):
+            return str(value)
+        
+        enum_options = self.value(options[bit_index]['value']).options
+        return enum_options[value]
+
+    def reference_name(self, key, value):
+        """Look up the friendly name for an encoded reference value
+        """
+        value = str(value)
+        if not self.value_type(key):
+            return value
+                
+        reference = self.value(key).reference
+                    
+        if value in reference:
+            comment = reference[value]['_comment']
+            return comment if comment else reference[value]['label']
+        else:
+            return '-'
 
     @property
     def binary_monitor_data(self):
         """Check that type of monitoring is BINARY(BYTE).
         """
-
+        
         return self.data['Monitoring']['type'] == 'BINARY(BYTE)'
-
+    
     def decode_monitor_binary(self, data):
         """Decode binary encoded status data.
         """
-
+        
         decoded = {}
         for item in self.data['Monitoring']['protocol']:
             key = item['value']
             value = 0
-            for v in data[item['startByte']:item['startByte'] +
-                          item['length']]:
+            for v in data[item['startByte']:item['startByte'] + item['length']]:
                 value = (value << 8) + v
             decoded[key] = str(value)
         return decoded
-
+    
     def decode_monitor_json(self, data):
         """Decode a bytestring that encodes JSON status data."""
-
+        
         return json.loads(data.decode('utf8'))
-
+    
     def decode_monitor(self, data):
         """Decode  status data."""
-
+        
         if self.binary_monitor_data:
             return self.decode_monitor_binary(data)
         else:
             return self.decode_monitor_json(data)
 
-
 class Device(object):
     """A higher-level interface to a specific device.
-
+        
     Unlike `DeviceInfo`, which just stores data *about* a device,
     `Device` objects refer to their client and can perform operations
     regarding the device.
@@ -741,7 +861,7 @@ class Device(object):
         """Create a wrapper for a `DeviceInfo` object associated with a
         `Client`.
         """
-
+        
         self.client = client
         self.device = device
         self.model = client.model_info(device)
@@ -749,289 +869,279 @@ class Device(object):
     def _set_control(self, key, value):
         """Set a device's control for `key` to `value`.
         """
-
+        
         self.client.session.set_device_controls(
             self.device.id,
             {key: value},
-        )
-
+            )
+    
     def _get_config(self, key):
         """Look up a device's configuration for a given value.
-
+            
         The response is parsed as base64-encoded JSON.
         """
-
+        
         data = self.client.session.get_device_config(
-            self.device.id,
-            key,
+               self.device.id,
+               key,
         )
         return json.loads(base64.b64decode(data).decode('utf8'))
-
+    
     def _get_control(self, key):
         """Look up a device's control value.
-        """
-
+            """
+        
         data = self.client.session.get_device_config(
-            self.device.id,
-            key,
-            'Control',
+               self.device.id,
+                key,
+               'Control',
         )
 
-        # The response comes in a funky key/value format: "(key:value)".
+            # The response comes in a funky key/value format: "(key:value)".
         _, value = data[1:-1].split(':')
         return value
 
 
-class ACMode(enum.Enum):
-    """The operation mode for an AC/HVAC device."""
+    def _delete_permission(self):
+        self.client.session.delete_permission(
+            self.device.id,
+        )
 
-    COOL = "@AC_MAIN_OPERATION_MODE_COOL_W"
-    DRY = "@AC_MAIN_OPERATION_MODE_DRY_W"
-    FAN = "@AC_MAIN_OPERATION_MODE_FAN_W"
-    AI = "@AC_MAIN_OPERATION_MODE_AI_W"
-    HEAT = "@AC_MAIN_OPERATION_MODE_HEAT_W"
-    AIRCLEAN = "@AC_MAIN_OPERATION_MODE_AIRCLEAN_W"
-    ACO = "@AC_MAIN_OPERATION_MODE_ACO_W"
-    AROMA = "@AC_MAIN_OPERATION_MODE_AROMA_W"
-    ENERGY_SAVING = "@AC_MAIN_OPERATION_MODE_ENERGY_SAVING_W"
+"""------------------for Washer"""
+
+class WASHERSTATE(enum.Enum):
+    
+    OFF = "@WM_STATE_POWER_OFF_W"
+    INITIAL = "@WM_STATE_INITIAL_W"
+    PAUSE = "@WM_STATE_PAUSE_W"
+    ERROR_AUTO_OFF = "@WM_STATE_ERROR_AUTO_OFF_W"
+    RESERVE = "@WM_STATE_RESERVE_W"
+    DETECTING = "@WM_STATE_DETECTING_W"
+    ADD_DRAIN = "WM_STATE_ADD_DRAIN_W"
+    DETERGENT_AMOUNT = "@WM_STATE_DETERGENT_AMOUNT_W"
+    RUNNING = "@WM_STATE_RUNNING_W"
+    PREWASH = "@WM_STATE_PREWASH_W"
+    RINSING = "@WM_STATE_RINSING_W"
+    RINSE_HOLD = "@WM_STATE_RINSEHOLD_W"
+    SPINNING = "@WM_STATE_SPINNING_W"
+    DRYING = "@WM_STATE_DRYING_W"
+    END = "@WM_STATE_END_W"
+    REFRESHWITHSTEAM = "@WM_STATE_REFRESHING_W"
+    STEAMSOFTENING = "@WM_STATE_STEAMSOFTENING_W"
+    COOLDOWN = "@WM_STATE_COOLDOWN_W"
+    ERRORSTATE = "@WM_STATE_ERROR_W"
+    TCL_ALARM_NORMAL = "TCL_ALARM_NORMAL"
+    FROZEN_PREVENT_INITIAL = "@WM_STATE_FROZEN_PREVENT_INITIAL_W"
+    FROZEN_PREVENT_RUNNING = "@WM_STATE_FROZEN_PREVENT_RUNNING_W"
+    FROZEN_PREVENT_PAUSE = "@WM_STATE_FROZEN_PREVENT_PAUSE_W"
+
+    
+class WASHERWATERTEMP(enum.Enum):
+    
+    NO_SELECT = "@WM_TERM_NO_SELECT_W"
+    COLD = "@WM_TITAN2_OPTION_TEMP_COLD_W"
+    TWENTY = "@WM_TITAN2_OPTION_TEMP_20_W"
+    THIRTY = "@WM_TITAN2_OPTION_TEMP_30_W"
+    FOURTY = "@WM_TITAN2_OPTION_TEMP_40_W"
+    SIXTY = "@WM_TITAN2_OPTION_TEMP_60_W"
+    NINTYFIVE = "@WM_TITAN2_OPTION_TEMP_95_W"
+
+class WASHERSPINSPEED(enum.Enum):
+    
+    NOSPIN = "@WM_TITAN2_OPTION_SPIN_NO_SPIN_W"
+    SPIN_400 = "@WM_TITAN2_OPTION_SPIN_400_W"
+    SPIN_800 = "@WM_TITAN2_OPTION_SPIN_800_W"
+    SPIN_1000 = "@WM_TITAN2_OPTION_SPIN_1000_W"
+    SPIN_1200 = "@WM_TITAN2_OPTION_SPIN_1200_W"
+    SPIN_1400 = "@WM_TITAN2_OPTION_SPIN_1400_W"
+
+class WASHERERROR(enum.Enum):
+    
+    ERROR_dE2 = "@WM_WW_FL_ERROR_DE2_W"
+    ERROR_IE = "@WM_WW_FL_ERROR_IE_W"
+    ERROR_OE = "@WM_WW_FL_ERROR_OE_W"
+    ERROR_UE = "@WM_WW_FL_ERROR_UE_W"
+    ERROR_FE = "@WM_WW_FL_ERROR_FE_W"
+    ERROR_PE = "@WM_WW_FL_ERROR_PE_W"
+    ERROR_tE = "@WM_WW_FL_ERROR_TE_W"
+    ERROR_LE = "@WM_WW_FL_ERROR_LE_W"
+    ERROR_CE = "@WM_WW_FL_ERROR_CE_W"
+    ERROR_dHE = "@WM_WW_FL_ERROR_DHE_W"
+    ERROR_PF = "@WM_WW_FL_ERROR_PF_W"
+    ERROR_FF = "@WM_WW_FL_ERROR_FF_W"
+    ERROR_dCE = "@WM_WW_FL_ERROR_DCE_W"
+    ERROR_EE = "@WM_WW_FL_ERROR_EE_W"
+    ERROR_PS = "@WM_WW_FL_ERROR_PS_W"
+    ERROR_dE1 = "@WM_WW_FL_ERROR_DE1_W"
+    ERROR_LOE = "@WM_WW_FL_ERROR_LOE_W"
 
 
-class ACFanSpeed(enum.Enum):
-    """The fan speed for an AC/HVAC device."""
-
-    SLOW = '@AC_MAIN_WIND_STRENGTH_SLOW_W'
-    SLOW_LOW = '@AC_MAIN_WIND_STRENGTH_SLOW_LOW_W'
-    LOW = '@AC_MAIN_WIND_STRENGTH_LOW_W'
-    LOW_MID = '@AC_MAIN_WIND_STRENGTH_LOW_MID_W'
-    MID = '@AC_MAIN_WIND_STRENGTH_MID_W'
-    MID_HIGH = '@AC_MAIN_WIND_STRENGTH_MID_HIGH_W'
-    HIGH = '@AC_MAIN_WIND_STRENGTH_HIGH_W'
-    POWER = '@AC_MAIN_WIND_STRENGTH_POWER_W'
-    AUTO = '@AC_MAIN_WIND_STRENGTH_AUTO_W'
-
-
-class ACOp(enum.Enum):
-    """Whether a device is on or off."""
-
-    OFF = "@AC_MAIN_OPERATION_OFF_W"
-    RIGHT_ON = "@AC_MAIN_OPERATION_RIGHT_ON_W"  # This one seems to mean "on"?
-    LEFT_ON = "@AC_MAIN_OPERATION_LEFT_ON_W"
-    ALL_ON = "@AC_MAIN_OPERATION_ALL_ON_W"
-
-
-class ACDevice(Device):
-    """Higher-level operations on an AC/HVAC device, such as a heat
-    pump.
-    """
-
-    @property
-    def f2c(self):
-        """Get a dictionary mapping Fahrenheit to Celsius temperatures for
-        this device.
-
-        Unbelievably, SmartThinQ devices have their own lookup tables
-        for mapping the two temperature scales. You can get *close* by
-        using a real conversion between the two temperature scales, but
-        precise control requires using the custom LUT.
-        """
-
-        mapping = self.model.value('TempFahToCel').options
-        return {int(f): c for f, c in mapping.items()}
-
-    @property
-    def c2f(self):
-        """Get an inverse mapping from Celsius to Fahrenheit.
-
-        Just as unbelievably, this is not exactly the inverse of the
-        `f2c` map. There are a few values in this reverse mapping that
-        are not in the other.
-        """
-
-        mapping = self.model.value('TempCelToFah').options
-        out = {}
-        for c, f in mapping.items():
-            try:
-                c_num = int(c)
-            except ValueError:
-                c_num = float(c)
-            out[c_num] = f
-        return out
-
-    def set_celsius(self, c):
-        """Set the device's target temperature in Celsius degrees.
-        """
-
-        self._set_control('TempCfg', c)
-
-    def set_fahrenheit(self, f):
-        """Set the device's target temperature in Fahrenheit degrees.
-        """
-
-        self.set_celsius(self.f2c[f])
-
-    def set_zones(self, zones):
-        """Turn off or on the device's zones.
-
-        The `zones` parameter is a list of dicts with these keys:
-        - "No": The zone index. A string containing a number,
-          starting from 1.
-        - "Cfg": Whether the zone is enabled. A string, either "1" or
-          "0".
-        - "State": Whether the zone is open. Also "1" or "0".
-        """
-
-        # Ensure at least one zone is enabled: we can't turn all zones
-        # off simultaneously.
-        on_count = sum(int(zone['State']) for zone in zones)
-        if on_count > 0:
-            zone_cmd = '/'.join(
-                '{}_{}'.format(zone['No'], zone['State'])
-                for zone in zones if zone['Cfg'] == '1'
-            )
-            self._set_control('DuctZone', zone_cmd)
-
-    def get_zones(self):
-        """Get the status of the zones, including whether a zone is
-        configured.
-
-        The result is a list of dicts with the same format as described in
-        `set_zones`.
-        """
-
-        return self._get_config('DuctZone')
-
-    def set_fan_speed(self, speed):
-        """Set the fan speed to a value from the `ACFanSpeed` enum.
-        """
-
-        speed_value = self.model.enum_value('WindStrength', speed.value)
-        self._set_control('WindStrength', speed_value)
-
-    def set_mode(self, mode):
-        """Set the device's operating mode to an `OpMode` value.
-        """
-
-        mode_value = self.model.enum_value('OpMode', mode.value)
-        self._set_control('OpMode', mode_value)
-
-    def set_on(self, is_on):
-        """Turn on or off the device (according to a boolean).
-        """
-
-        op = ACOp.RIGHT_ON if is_on else ACOp.OFF
-        op_value = self.model.enum_value('Operation', op.value)
-        self._set_control('Operation', op_value)
-
-    def get_filter_state(self):
-        """Get information about the filter."""
-
-        return self._get_config('Filter')
-
-    def get_mfilter_state(self):
-        """Get information about the "MFilter" (not sure what this is).
-        """
-
-        return self._get_config('MFilter')
-
-    def get_energy_target(self):
-        """Get the configured energy target data."""
-
-        return self._get_config('EnergyDesiredValue')
-
-    def get_light(self):
-        """Get a Boolean indicating whether the display light is on."""
-
-        value = self._get_control('DisplayControl')
-        return value == '0'  # Seems backwards, but isn't.
-
-    def get_volume(self):
-        """Get the speaker volume level."""
-
-        value = self._get_control('SpkVolume')
-        return int(value)
-
+class WasherDevice(Device):
+    
     def monitor_start(self):
         """Start monitoring the device's status."""
-
-        mon = Monitor(self.client.session, self.device.id)
-        mon.start()
-        self.mon = mon
-
+        
+        self.mon = Monitor(self.client.session, self.device.id)
+        self.mon.start()
+    
     def monitor_stop(self):
         """Stop monitoring the device's status."""
-
+        
         self.mon.stop()
-
+    
+    def delete_permission(self):
+        self._delete_permission()
+    
     def poll(self):
         """Poll the device's current state.
-
+        
         Monitoring must be started first with `monitor_start`. Return
         either an `ACStatus` object or `None` if the status is not yet
         available.
         """
-
-        # Abort if monitoring has not started yet.
-        if not hasattr(self, 'mon'):
-            return None
-
-        res = self.mon.poll_json()
-        if res:
-            return ACStatus(self, res)
+        
+        data = self.mon.poll()
+        if data:
+            res = self.model.decode_monitor(data)
+            """
+            with open('/config/wideq/washer_polled_data.json','w', encoding="utf-8") as dumpfile:
+                json.dump(res, dumpfile, ensure_ascii=False, indent="\t")
+            """
+            return WasherStatus(self, res)
+        
         else:
             return None
 
-
-class ACStatus(object):
-    """Higher-level information about an AC device's current status.
-    """
-
-    def __init__(self, ac, data):
-        self.ac = ac
+class WasherStatus(object):
+    
+    def __init__(self, washer, data):
+        self.washer = washer
         self.data = data
-
-    @staticmethod
-    def _str_to_num(s):
-        """Convert a string to either an `int` or a `float`.
-
-        Troublingly, the API likes values like "18", without a trailing
-        ".0", for whole numbers. So we use `int`s for integers and
-        `float`s for non-whole numbers.
-        """
-
-        f = float(s)
-        if f == int(f):
-            return int(f)
-        else:
-            return f
-
-    @property
-    def temp_cur_c(self):
-        return self._str_to_num(self.data['TempCur'])
-
-    @property
-    def temp_cur_f(self):
-        return self.ac.c2f[self.temp_cur_c]
-
-    @property
-    def temp_cfg_c(self):
-        return self._str_to_num(self.data['TempCfg'])
-
-    @property
-    def temp_cfg_f(self):
-        return self.ac.c2f[self.temp_cfg_c]
-
+    
     def lookup_enum(self, key):
-        return self.ac.model.enum_name(key, self.data[key])
-
-    @property
-    def mode(self):
-        return ACMode(self.lookup_enum('OpMode'))
-
-    @property
-    def fan_speed(self):
-        return ACFanSpeed(self.lookup_enum('WindStrength'))
+        return self.washer.model.enum_name(key, self.data[key])
+    
+    def lookup_reference(self, key):
+        return self.washer.model.reference_name(key, self.data[key])
+    
+    def lookup_bit(self, key, index):
+        bit_value = int(self.data[key])
+        bit_index = 2 ** index
+        mode = bin(bit_value & bit_index)
+        if mode == bin(0):
+            return 'OFF'
+        else:
+            return 'ON'
 
     @property
     def is_on(self):
-        op = ACOp(self.lookup_enum('Operation'))
-        return op != ACOp.OFF
+        run_state = WASHERSTATE(self.lookup_enum('State'))
+        return run_state != WASHERSTATE.OFF
+        
+    @property
+    def run_state(self):
+        return WASHERSTATE(self.lookup_enum('State'))
+
+    @property
+    def pre_state(self):
+        return WASHERSTATE(self.lookup_enum('PreState'))
+    
+    @property
+    def remaintime_hour(self):
+        return self.data['Remain_Time_H']
+    
+    @property
+    def remaintime_min(self):
+        return self.data['Remain_Time_M']
+    
+    @property
+    def initialtime_hour(self):
+        return self.data['Initial_Time_H']
+    
+    @property
+    def initialtime_min(self):
+        return self.data['Initial_Time_M']
+
+    @property
+    def reservetime_hour(self):
+        return self.data['Reserve_Time_H']
+    
+    @property
+    def reservetime_min(self):
+        return self.data['Reserve_Time_M']
+
+    @property
+    def current_course(self):
+        course = self.lookup_reference('Course')
+        if course == '-':
+            return 'OFF'
+        else:
+            return course
+
+    @property
+    def error_state(self):
+        error = self.lookup_reference('Error')
+        if error == '-':
+            return 'OFF'
+        elif error == 'No Error':
+            return 'NO_ERROR'
+        else:
+            return WASHERERROR(error)
+    
+    @property
+    def spin_option_state(self):
+        spinspeed = self.lookup_enum('SpinSpeed')
+        if spinspeed == '-':
+            return 'OFF'
+        return WASHERSPINSPEED(spinspeed)
+
+    @property
+    def water_temp_option_state(self):
+        water_temp = self.lookup_enum('WaterTemp')
+        if water_temp == '-':
+            return 'OFF'
+        return WASHERWATERTEMP(water_temp)
+   
+    @property
+    def current_smartcourse(self):
+        smartcourse = self.lookup_reference('SmartCourse')
+        if smartcourse == '-':
+            return 'OFF'
+        else:
+            return smartcourse
+
+    @property
+    def creasecare_state(self):
+        return self.lookup_bit('Option1', 1)
+
+    @property
+    def childlock_state(self):
+        return self.lookup_bit('Option2', 7)
+
+    @property
+    def steam_state(self):
+        return self.lookup_bit('Option1', 7)
+
+    @property
+    def steam_softener_state(self):
+        return self.lookup_bit('Option1', 2)
+
+    @property
+    def doorlock_state(self):
+        return self.lookup_bit('Option2', 6)
+
+    @property
+    def prewash_state(self):
+        return self.lookup_bit('Option1', 6)
+
+    @property
+    def remotestart_state(self):
+        return self.lookup_bit('Option2', 1)
+
+    @property
+    def turbowash_state(self):
+        return self.lookup_bit('Option1', 0)
+
+    @property
+    def tubclean_count(self):
+        return self.data['TCLCount']
